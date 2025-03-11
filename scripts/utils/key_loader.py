@@ -3,7 +3,7 @@ import os
 
 def load_api_keys():
     # Risali alla cartella principale del progetto
-    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__))).replace("scripts","")
     keys_path = os.path.join(base_dir, "credentials", "api_keys.json")
 
     try:

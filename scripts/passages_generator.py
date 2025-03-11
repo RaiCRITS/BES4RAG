@@ -36,13 +36,19 @@ def read_embeddings_models(file_path):
     
     ext = os.path.splitext(file_path)[-1].lower()
     if ext == ".csv":
-        df = pd.read_csv(file_path)
+        try:
+            df = pd.read_csv(file_path)
+            df.columns = ["type", "model_name"]
+        except:
+            df = pd.read_csv(file_path,sep=";")
+            df.columns = ["type", "model_name"]
     elif ext in [".xls", ".xlsx"]:
         df = pd.read_excel(file_path)
+        df.columns = ["type", "model_name"]
     else:
         raise ValueError("Unsupported format! Use .csv or .xlsx")
     
-    df.columns = ["type", "model_name"]
+    
     return df.to_dict(orient="records")
 
 def main():

@@ -102,7 +102,7 @@ def from_id_to_article_passages(id, path, emb):
         passages = json.load(file)
 
     p1,p2 = id.split("#")
-    text = passages[emb][p1+".txt"][int(p2)]
+    text = passages[emb][p1][int(p2)]
     return text
 
 def from_id_to_article_passages_fever(id, passages, emb):

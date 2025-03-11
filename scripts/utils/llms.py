@@ -65,11 +65,11 @@ def get_groq_response(prompt, model_name, max_retries=5):
     while attempts < max_retries:
         try:
             response = client.chat.completions.create(
+                model=model_name,
                 messages=[
                     {"role": "system", "content": "You are an AI assistant that answers questions following the given instructions."},
                     {"role": "user", "content": prompt},
                 ],
-                model=model_name,
                 temperature=0,
                 max_completion_tokens=1,
                 top_p=0.1
@@ -82,8 +82,11 @@ def get_groq_response(prompt, model_name, max_retries=5):
                 time.sleep(retry_after)
                 attempts += 1
             else:
+                print("PROMPT\n",prompt)
+                print("PROMPT")
                 print(f"Error: {e}")
-                break
+                time.sleep(60)
+                attempts += 1
     raise Exception("Maximum retry attempts reached.")
 
 def get_openai_response(prompt, model_name):
@@ -216,7 +219,7 @@ def get_openai_question(prompt, model_name):
         ],
         temperature=0
     )
-    return response.choices[0].message
+    return response.choices[0].message.content
 
 
 

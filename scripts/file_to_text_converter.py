@@ -23,7 +23,7 @@ def process_json(filepath, texts_dir, mapping):
                         text_path = os.path.join(texts_dir, text_filename)
                         with open(text_path, "w", encoding="utf-8") as text_file:
                             text_file.write(text_content)
-                        mapping["texts_to_files"][text_filename] = filepath
+                        mapping["texts_to_files"][text_filename] = str(filepath)
             else:
                 for i, (key, value) in enumerate(data.items()):
                     text_content = f"{key}: {value}"
@@ -31,15 +31,16 @@ def process_json(filepath, texts_dir, mapping):
                     text_path = os.path.join(texts_dir, text_filename)
                     with open(text_path, "w", encoding="utf-8") as text_file:
                         text_file.write(text_content)
-                    mapping["texts_to_files"][text_filename] = filepath
+                    mapping["texts_to_files"][text_filename] = str(filepath)
         except json.JSONDecodeError:
             print(f"Error parsing JSON: {filepath}")
 
 def process_txt(filepath, texts_dir, mapping):
     """Copy a text file to the target directory."""
     dest_path = os.path.join(texts_dir, os.path.basename(filepath))
+    text_filename = os.path.basename(filepath)
     copy2(filepath, dest_path)
-    mapping["texts_to_files"][os.path.basename(filepath)] = filepath
+    mapping["texts_to_files"][text_filename] = str(filepath)
 
 def process_pdf(filepath, texts_dir, mapping):
     """Convert each page of a PDF into a separate text file."""
@@ -50,7 +51,7 @@ def process_pdf(filepath, texts_dir, mapping):
         text_path = os.path.join(texts_dir, text_filename)
         with open(text_path, "w", encoding="utf-8") as text_file:
             text_file.write(page.extract_text() or "")
-        mapping["texts_to_files"][text_filename] = filepath
+        mapping["texts_to_files"][text_filename] = str(filepath)
 
 def main():
     """Main function to process files in the dataset directory."""
@@ -64,10 +65,14 @@ def main():
     files_dir = dataset_path / args.files_path
     texts_dir = dataset_path / args.texts_path
     mapping_dir = dataset_path / "mapping"
-    mapping_file = mapping_dir / "file_mapping.json"
+    mapping_file = os.path.join(mapping_dir,"file_mapping.json")
     
     ensure_dir(texts_dir)
     ensure_dir(mapping_dir)
+    
+    if os.path.exists(mapping_file):
+        print(f"Mapping already exists at {mapping_file}. No action taken.")
+        return
     
     mapping = {"texts_to_files": {}}
     for filepath in files_dir.glob("*"):

@@ -4,6 +4,7 @@ import pickle
 import argparse
 from pathlib import Path
 from tqdm import tqdm
+
 from utils import retrieval
 
 def ensure_dir(path):
@@ -28,7 +29,7 @@ def main():
     
     ensure_dir(retrieval_dir)
 
-    retrieval_questions_dir = retrieval_dir / file_questions_path.split("/")[-1].replace(".json","")
+    retrieval_questions_dir = retrieval_dir / str(file_questions_path).split("/")[-1].replace(".json","")
 
     ensure_dir(retrieval_questions_dir)
     
@@ -37,13 +38,13 @@ def main():
     
     embeddings_dict = retrieval.read_embeddings(embeddings_dir)
     
-    for model_name, embeddings in embeddings_dict.items():
-        print(model_name)
+    for model_name in embeddings_dict:
+        embeddings_model = embeddings_dict[model_name]
         safe_name = model_name.replace("/", "|")
         retrieval_dict = {}
         
         for question in tqdm([q["question"] for q in questions]):
-            retrieval_dict[question] = retrieval.retrieve_passages(question, embeddings)
+            retrieval_dict[question] = retrieval.retrieve_passages(question, embeddings_model)
         
         with open(retrieval_questions_dir / safe_name, "wb") as f:
             pickle.dump(retrieval_dict, f)

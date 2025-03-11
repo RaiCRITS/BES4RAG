@@ -9,6 +9,10 @@ from tqdm import tqdm
 #from utils.key_loader import load_api_keys
 from utils import llms
 
+def ensure_dir(path):
+    """Create a directory if it does not exist."""
+    os.makedirs(path, exist_ok=True)
+
 def take_random_text(max_words, text):
     """Extracts a random portion of the text with a max word limit."""
     words = text.split()
@@ -36,7 +40,7 @@ def generate_questions(base_prompt, texts, n_questions, max_words, provider,mode
     while len(generated_questions) < n_questions and attempts < max_attempts:
         article = random.choice(texts)
         text_to_use = take_random_text(max_words, article['text']) if max_words else article['text']
-        prompt = base_prompt.replace("<text>", text_to_use)
+        prompt = base_prompt.replace("<<<text>>>", text_to_use)
         
         try:
             question_data = llms.generate_question(provider,model_name,prompt)
@@ -65,7 +69,7 @@ def main():
     parser.add_argument("--name_file_questions", type=str, default="generated_questions.json", help="Output JSON file")
     parser.add_argument("--provider", type=str, default="openai", help="LLM provider (e.g openai, gemini, groq)")
     parser.add_argument("--model_name", type=str, default="gpt4o_LowFilter", help="The specific model name")
-    parser.add_argument("--prompt_filename", type=str, default="base_prompt.txt", help="Base prompt file")
+    parser.add_argument("--prompt_path", type=str, default="scripts/utils/base_prompt.txt", help="Base prompt file")
     parser.add_argument("--texts_path", type=str, default="texts", help="Folder for text files")
     parser.add_argument("--n_questions", type=int, default=500, help="Number of questions to generate")
     parser.add_argument("--max_words_per_q", type=int, default=None, help="Max words per question context")
@@ -75,7 +79,9 @@ def main():
     texts_dir = dataset_path / args.texts_path
     questions_dir = dataset_path / args.questions_path
     questions_file_path = questions_dir / args.name_file_questions
-    prompt_file_path = questions_dir / args.prompt_filename
+    prompt_file_path = args.prompt_path
+
+    ensure_dir(questions_dir)
     
     with open(prompt_file_path, encoding="utf-8") as f:
         base_prompt = f.read()

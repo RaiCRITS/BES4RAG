@@ -70,11 +70,14 @@ def get_tokenizer(embedding_model, TOKENIZER_CACHE):
     Ottiene il tokenizer corretto e il massimo numero di token dal modello di embedding.
     Salva il tokenizer e max_token nella cache globale.
     """
+
     model_type = embedding_model['type']
     model_name = embedding_model['model_name']
 
-    if model_name in TOKENIZER_CACHE:
-        return TOKENIZER_CACHE[model_name]['tokenizer'], TOKENIZER_CACHE[model_name]['max_token']
+    name_model = "-".join([model_type, model_name.replace("/", "|")])
+
+    if name_model in TOKENIZER_CACHE:
+        return TOKENIZER_CACHE[name_model]['tokenizer'], TOKENIZER_CACHE[name_model]['max_token']
 
     if model_type == "sentencetransformers":
         tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -83,7 +86,7 @@ def get_tokenizer(embedding_model, TOKENIZER_CACHE):
     elif model_type == "openai":
         tokenizer = tiktoken.encoding_for_model(model_name)
         max_token = 8191
-    elif model_type == "openai_512":
+    elif model_type == "openai512":
         tokenizer = tiktoken.encoding_for_model(model_name)
         max_token = 512
     elif model_type == "colbert":
@@ -105,7 +108,8 @@ def get_tokenizer(embedding_model, TOKENIZER_CACHE):
     else:
         raise ValueError("Model type not supported.")
 
-    TOKENIZER_CACHE[model_name] = {'tokenizer': tokenizer, 'max_token': max_token}
+    
+    TOKENIZER_CACHE[name_model] = {'tokenizer': tokenizer, 'max_token': max_token}
     return  tokenizer, max_token
 
 
@@ -113,18 +117,16 @@ def tokenize(embedding_model, text, TOKENIZER_CACHE):
     """Tokenizza un testo in base al modello specificato."""
     tokenizer, _ = get_tokenizer(embedding_model, TOKENIZER_CACHE)
     model_type = embedding_model['type']
-
     if model_type == "sentencetransformers":
         return tokenizer(text, return_tensors="pt", add_special_tokens=False)['input_ids'][0]
     elif model_type == "openai":
         return tokenizer.encode(text)
-    elif model_type == "openai_512":
+    elif model_type == "openai512":
         return tokenizer.encode(text)
     elif model_type == "colbert":
         return tokenizer.tokenize(text)
     elif model_type == "TFIDF":
         return text.split()
-        
     else:
         raise ValueError("Model type not supported.")
 
@@ -137,7 +139,7 @@ def detokenize(embedding_model, tokens, TOKENIZER_CACHE):
         return tokenizer.decode(tokens)
     elif model_type == "openai":
         return tokenizer.decode(tokens)
-    elif model_type == "openai_512":
+    elif model_type == "openai512":
         return tokenizer.decode(tokens)
     elif model_type == "colbert":
         return tokenizer.convert_tokens_to_string(tokens)
@@ -165,6 +167,7 @@ def split_text(embedding_model, text, TOKENIZER_CACHE, max_tokens=None, descript
     """
     tokenizer, model_max_token = get_tokenizer(embedding_model, TOKENIZER_CACHE)
     max_tokens = max_tokens or model_max_token
+
     if description != None:
         max_tokens = max_tokens - len(tokenize(embedding_model, description, TOKENIZER_CACHE))-2    #il meno due è dovuto ai due a capo che incollo nel caso in cui ci sia 
     tokens = tokenize(embedding_model, text, TOKENIZER_CACHE)
@@ -183,6 +186,24 @@ def compute_embeddings(transcripts,embedding):
 
     #SENTENCE TRANSFORMERS
     if embedding['type'] == "sentencetransformers":
+        # Caricare il modello su CPU
+        model = SentenceTransformer(embedding['model_name'], device="cpu")
+        
+        ids = []
+        embeddings = []
+        
+        for tr in tqdm(transcripts):
+            if tr['text'] != "":
+                try:
+                    ids.append(tr['id'])
+                    embeddings.append(model.encode(tr['text'], device="cpu"))  # Forza il calcolo su CPU
+                except Exception as e:
+                    print(e)
+                    print(tr['id'])
+        
+        return {"embeddings": embeddings, "ids": ids}
+
+        """
         model = SentenceTransformer(embedding['model_name'])
         ids = []
         embeddings = []
@@ -195,12 +216,12 @@ def compute_embeddings(transcripts,embedding):
                     print(e)
                     print(tr['id'])
         return {"embeddings":embeddings,"ids":ids}
+        """
 
     #OPENAI
-    elif embedding['type'] == "openai" or embedding['type'] == "openai_512":
+    elif embedding['type'] == "openai" or embedding['type'] == "openai512":
 
         if "azure_endpoint" in api_keys["openai"]:
-
             client_emb = AzureOpenAI(
                   api_key = api_keys["openai"]["api_key"],  
                   api_version = api_keys["openai"]["api_version"],
@@ -209,7 +230,6 @@ def compute_embeddings(transcripts,embedding):
         else:
             openai.api_key =  api_keys["openai"]["api_key"]
             client_emb = OpenAI()
-
         ids = []
         embeddings = []
         for tr in tqdm(transcripts):
@@ -227,27 +247,36 @@ def compute_embeddings(transcripts,embedding):
         return {"embeddings":embeddings,"ids":ids}
 
     #COLBERT
+
     elif embedding['type'] == "colbert":
         checkpoint = embedding['model_name']
         config = ColBERTConfig(doc_maxlen=500, nbits=2)
+        
+        # Caricare il checkpoint su CPU
         ckpt = Checkpoint(checkpoint, colbert_config=config)
+        if hasattr(ckpt, "to"):
+            ckpt.to("cpu")  # Forza il modello su CPU
+    
         ids = []
-        D = []
-        D_mask = []
         processed_passages = []
+    
         for tr in tqdm(transcripts):
             if tr['text'] != "":
-                    ids.append(tr['id'])
-                    processed_passages.append(tr['text'])
-                
-        D = ckpt.docFromText(processed_passages, bsize=32)[0]
-        D_mask = torch.ones(D.shape[:2], dtype=torch.long)
+                ids.append(tr['id'])
+                processed_passages.append(tr['text'])
+    
+        # Assicurarsi che l'output di docFromText sia su CPU
+        with torch.no_grad():  # Evita operazioni di calcolo su GPU
+            D = ckpt.docFromText(processed_passages, bsize=32)[0].to("cpu")
+        
+        # Creare la maschera su CPU
+        D_mask = torch.ones(D.shape[:2], dtype=torch.long, device="cpu")
+    
+        # Convertire in NumPy su CPU
         D = D.detach().cpu().numpy()
         D_mask = D_mask.detach().cpu().numpy()
-        
-#        D = np.concatenate(D, axis=0)
-#        D_mask = np.concatenate(D_mask, axis=0)
-        return {"D":D,"D_mask":D_mask,"ids":ids}
+    
+        return {"D": D, "D_mask": D_mask, "ids": ids}
 
     elif embedding['type'] == "TFIDF":
         parsed_tfidf = parse_tfidf_string(embedding['model_name'])
@@ -273,5 +302,28 @@ def compute_embeddings(transcripts,embedding):
 
 
 
+    """
+    elif embedding['type'] == "colbert":
+        checkpoint = embedding['model_name']
+        config = ColBERTConfig(doc_maxlen=500, nbits=2)
+        ckpt = Checkpoint(checkpoint, colbert_config=config)
+        ids = []
+        D = []
+        D_mask = []
+        processed_passages = []
+        for tr in tqdm(transcripts):
+            if tr['text'] != "":
+                    ids.append(tr['id'])
+                    processed_passages.append(tr['text'])
+
+        D = ckpt.docFromText(processed_passages, bsize=32)[0]
+        D_mask = torch.ones(D.shape[:2], dtype=torch.long)
+        D = D.detach().cpu().numpy()
+        D_mask = D_mask.detach().cpu().numpy()
+        
+#        D = np.concatenate(D, axis=0)
+#        D_mask = np.concatenate(D_mask, axis=0)
+        return {"D":D,"D_mask":D_mask,"ids":ids}
+    """
 
 

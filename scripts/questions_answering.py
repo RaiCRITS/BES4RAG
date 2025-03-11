@@ -4,6 +4,8 @@ import argparse
 import json
 import pickle
 from tqdm import tqdm
+from pathlib import Path
+import os
 
 def ensure_dir(path):
     """Create a directory if it does not exist."""
@@ -20,13 +22,16 @@ def main():
     parser.add_argument("--model_name", type=str, default="llama3-70b-8192", help="The name of the specific model")
     parser.add_argument("--answers_path", type=str, default="answers", help="Folder for answers")
 
-
     args = parser.parse_args()
+
+    provider = args.llm_provider
+    model_name = args.model_name
+    
     dataset_path = Path(args.dataset_path)
     questions_dir = dataset_path / args.questions_path
     file_questions_path = questions_dir / args.name_file_questions
     retrieval_dir = dataset_path / args.retrieval_path
-    questions_name = file_questions_path.split("/")[-1].replace(".json","")
+    questions_name = str(file_questions_path).split("/")[-1].replace(".json","")
     retrieval_questions_dir = retrieval_dir / questions_name
     answers_dir = dataset_path / args.answers_path
 
@@ -54,6 +59,8 @@ def main():
 
 
     ks = [x for x in range(6)]+ [10]
+
+
     for emb in retieved_dict:
         dict_answers = {}
         retrieved = retieved_dict[emb]
@@ -63,13 +70,15 @@ def main():
             resps = []
             for k in ks:    #k=0 is no rag
                 if k == 0:
-                    prompt_ = prompt.prompt_question_passages(q, retrieved, k, path, emb, rag = False)
+                    prompt_ = prompt.prompt_question_passages(q, retrieved, k, args.dataset_path, emb, rag = False)
                 else:
-                    prompt_ = prompt.prompt_question_passages(q, retrieved, k, path, emb, rag = True)
+                    prompt_ = prompt.prompt_question_passages(q, retrieved, k, args.dataset_path, emb, rag = True)
                 resp = llms.answer_question(provider,model_name,prompt_)
                 resps.append({"k":k, "answer":resp})
             dict_answers[q['question']]['answer_LLM'] = resps
         with open(os.path.join(answers_questions_dir,emb+".json"), 'w') as json_file:
             json.dump(dict_answers, json_file, indent=4, ensure_ascii=False)
 
+if __name__ == "__main__":
+    main()
 

@@ -66,7 +66,7 @@ def read_embeddings(folder, special = None):     #special is a list of embedding
                 model_name = "-".join(name_split[1:])
                 model = SentenceTransformer(model_name)
                 embeddings["model"] = model
-            elif type_emb == "openai" or type_emb == "openai_512":
+            elif type_emb == "openai" or type_emb == "openai512":
 
 
                 if "azure_endpoint" in api_keys["openai"]:
@@ -88,8 +88,10 @@ def read_embeddings(folder, special = None):     #special is a list of embedding
 
 
 def retrieve_passages(query, collection_embeddings, k=None):
+
     
     if "D" in collection_embeddings:
+        """
         ckpt = collection_embeddings["ckpt"]
         Q = ckpt.queryFromText([query])
         D = collection_embeddings["D"]
@@ -98,6 +100,28 @@ def retrieve_passages(query, collection_embeddings, k=None):
         ranking = np.argsort(scores)[::-1]
         if k is not None:
             ranking = ranking[:k]
+        """
+        ckpt = collection_embeddings["ckpt"]
+    
+        # Assicuriamoci che il modello sia sulla CPU (se necessario)
+        if hasattr(ckpt, "to"):
+            ckpt.to("cpu")
+    
+        # Forzare Q, D e D_mask sulla CPU
+        Q = ckpt.queryFromText([query]).to("cpu")  
+        D = collection_embeddings["D"].to("cpu")
+        D_mask = collection_embeddings["D_mask"].to("cpu")
+    
+        # Calcola i punteggi su CPU
+        with torch.no_grad():  # Per evitare calcoli non necessari su GPU
+            scores = colbert_score(Q, D, D_mask).flatten().cpu().numpy().tolist()
+    
+        # Ordina i risultati in ordine decrescente
+        ranking = np.argsort(scores)[::-1]
+    
+        if k is not None:
+            ranking = ranking[:k]
+
         list_retrieval = [{"id":collection_embeddings["ids"][i], "threshold":scores[i]} for i in ranking]
 
     elif "TfidfVectorizer" in collection_embeddings:
