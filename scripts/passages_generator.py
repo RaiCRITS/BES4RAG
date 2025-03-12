@@ -88,7 +88,7 @@ def main():
                 text = file.read()
         except UnicodeDecodeError:
             # Se c'è un errore con utf-8, prova con una codifica alternativa
-            with open(texts_dir / text_file, 'r', encoding='ISO-8859-1') as f:
+            with open(texts_dir / text_file, 'r', encoding='ISO-8859-1') as file:
                 text = file.read()
         
         description = descriptions.get(mapping["texts_to_files"][text_file]) if isinstance(descriptions, dict) else descriptions
