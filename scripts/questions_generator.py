@@ -26,8 +26,14 @@ def load_texts(texts_dir):
     texts = []
     for file_name in tqdm(os.listdir(texts_dir), desc="Loading .txt files"):
         if file_name.endswith(".txt"):
-            with open(os.path.join(texts_dir, file_name), encoding="utf-8") as file:
-                texts.append({"text": file.read(), "id": file_name})
+            file_path = os.path.join(texts_dir, file_name)
+            try:
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    texts.append({"text": f.read(), "id": file_name})
+            except UnicodeDecodeError:
+                # Se c'è un errore con utf-8, prova con una codifica alternativa
+                with open(file_path, 'r', encoding='ISO-8859-1') as f:
+                    texts.append({"text": f.read(), "id": file_name})
     return texts
 
 def generate_questions(base_prompt, texts, n_questions, max_words, provider,model_name):
