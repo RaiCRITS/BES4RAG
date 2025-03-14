@@ -39,32 +39,7 @@ If you are using both OpenAI and Groq:
 }
 ```  
 
-Make sure not to share your API keys publicly.
 
-## API Key Configuration  
-
-To use this code, you must provide the necessary API keys by filling in the `credentials/api_keys.json` file.  
-
-Only the required keys need to be set; you can remove any unused ones.  
-
-#### Example:  
-
-If you are using OpenAI, your `credentials/api_keys.json` should look like this:  
-
-```json
-{
-    "openai": {"api_key":"your-openai-api-key"}
-}
-```
-
-If you are using both OpenAI and Groq:  
-
-```json
-{
-    "openai": {"api_key":"your-openai-api-key"},
-    "groq": {"api_key":"your-groq-api-key"}
-}
-```  
 
 ### Recommended API Key Setup  
 
