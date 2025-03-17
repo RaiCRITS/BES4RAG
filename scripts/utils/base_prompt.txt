@@ -14,7 +14,7 @@ For each option, provide an explanation of why, based on the article, the option
 
 Present the response in the following format:
 {
-    "question": <multiple-choice question>,
+    "question": "<multiple-choice question>",
     "options":[
         {
             "text":"<option1>",
@@ -38,4 +38,4 @@ Present the response in the following format:
         }
     ]
 }
-Provide only the question and options formatted as specified above and written in the same language of the text without any additional text.
+Provide only the question and options formatted as specified above (a valid JSON format) and written in the same language of the text without any additional text.
