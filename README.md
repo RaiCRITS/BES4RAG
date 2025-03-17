@@ -76,6 +76,7 @@ sentencetransformers;intfloat/multilingual-e5-large
 sentencetransformers;dunzhang/stella_en_1.5B_v5
 colbert;antoinelouis/colbert-xm
 openai512;text-embedding-3-large
+openai;text-embedding-3-large
 ```
 
 Ensure that all necessary models are listed correctly.
