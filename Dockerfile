@@ -4,13 +4,13 @@ FROM python:3.11.11
 # Imposta il working directory
 WORKDIR /app
 
-# Installa git per gestire eventuali dipendenze future (opzionale)
+# Installa git per clonare il repository
 RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 
-# Copia il contenuto del tuo repository nella cartella di lavoro del container
-COPY . /app
+# Clona il repository BES4RAG da GitHub
+RUN git clone https://github.com/tuo-utente/BES4RAG.git
 
-# Spostati nella cartella del repository (presumendo che sia nella root del Dockerfile)
+# Spostati nella cartella del repository
 WORKDIR /app/BES4RAG
 
 # Installa le dipendenze da requirements.txt
@@ -18,3 +18,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Mantieni il container attivo permettendo di eseguire comandi interattivi
 CMD ["/bin/bash"]
+
