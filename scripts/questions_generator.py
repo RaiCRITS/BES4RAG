@@ -5,8 +5,6 @@ import argparse
 import numpy as np
 from pathlib import Path
 from tqdm import tqdm
-#from openai import AzureOpenAI, OpenAI
-#from utils.key_loader import load_api_keys
 from utils import llms
 
 def ensure_dir(path):
@@ -79,6 +77,7 @@ def main():
     parser.add_argument("--texts_path", type=str, default="texts", help="Folder for text files")
     parser.add_argument("--n_questions", type=int, default=500, help="Number of questions to generate")
     parser.add_argument("--max_words_per_q", type=int, default=None, help="Max words per question context")
+    parser.add_argument("--skip_existing", action="store_true", help="Skip writing the output if it already exists")
     args = parser.parse_args()
     
     dataset_path = Path(args.dataset_path)
@@ -88,15 +87,40 @@ def main():
     prompt_file_path = args.prompt_path
 
     ensure_dir(questions_dir)
-    
+
+    # Leggi il prompt di base
     with open(prompt_file_path, encoding="utf-8") as f:
         base_prompt = f.read()
     
+    # Carica i testi
     texts = load_texts(texts_dir)
-    questions = generate_questions(base_prompt, texts, args.n_questions, args.max_words_per_q, args.provider, args.model_name)
     
-    with open(questions_file_path, "w", encoding="utf-8") as json_file:
-        json.dump(questions, json_file, indent=4, ensure_ascii=False)
+    # Controlla se il file esiste già e se contiene domande, altrimenti crea nuove domande
+    if questions_file_path.exists() and args.skip_existing:
+        with open(questions_file_path, "r", encoding="utf-8") as json_file:
+            existing_questions = json.load(json_file)
+        
+        # Se il numero di domande è inferiore a quello richiesto, generiamo le mancanti
+        if len(existing_questions) < args.n_questions:
+            print(f"File already exists, generating additional questions.")
+            remaining_questions = args.n_questions - len(existing_questions)
+            new_questions = generate_questions(base_prompt, texts, remaining_questions, args.max_words_per_q, args.provider, args.model_name)
+            existing_questions.extend(new_questions)
+            
+            # Scrivi le domande aggiornate nel file
+            with open(questions_file_path, "w", encoding="utf-8") as json_file:
+                json.dump(existing_questions, json_file, indent=4, ensure_ascii=False)
+            print(f"Questions updated and saved to {questions_file_path}")
+        else:
+            print(f"File already contains {len(existing_questions)} questions, no additional questions needed.")
     
+    else:
+        # Se il file non esiste o skip_existing è disabilitato, generiamo tutte le domande
+        print(f"Generating {args.n_questions} questions.")
+        questions = generate_questions(base_prompt, texts, args.n_questions, args.max_words_per_q, args.provider, args.model_name)
+        with open(questions_file_path, "w", encoding="utf-8") as json_file:
+            json.dump(questions, json_file, indent=4, ensure_ascii=False)
+        print(f"Questions generated and saved to {questions_file_path}")
+
 if __name__ == "__main__":
     main()
