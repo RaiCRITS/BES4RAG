@@ -29,15 +29,18 @@ def load_texts(texts_dir):
                 with open(file_path, 'r', encoding='utf-8') as f:
                     texts.append({"text": f.read(), "id": file_name})
             except UnicodeDecodeError:
-                # Se c'è un errore con utf-8, prova con una codifica alternativa
+                # If there is a decoding error, try an alternative encoding
                 with open(file_path, 'r', encoding='ISO-8859-1') as f:
                     texts.append({"text": f.read(), "id": file_name})
     return texts
 
-def generate_questions(base_prompt, texts, n_questions, max_words, provider,model_name):
-    """Generates multiple-choice questions from given texts."""
-    generated_questions = []
-    seen_questions = set()
+def generate_questions(base_prompt, texts, n_questions, max_words, provider, model_name, questions_file_path, existing_questions=None):
+    """Generates multiple-choice questions from given texts and saves every 20 questions."""
+    if existing_questions is None:
+        existing_questions = []
+
+    generated_questions = existing_questions
+    seen_questions = {q['question'] for q in existing_questions}
     attempts = 0
     max_attempts = 100
     
@@ -47,14 +50,23 @@ def generate_questions(base_prompt, texts, n_questions, max_words, provider,mode
         prompt = base_prompt.replace("<<<text>>>", text_to_use)
         
         try:
-            question_data = llms.generate_question(provider,model_name,prompt)
+            question_data = llms.generate_question(provider, model_name, prompt)
             question_data['id'] = article['id']
             
+            # If the question has not been seen before, add it
             if question_data['question'] not in seen_questions:
                 seen_questions.add(question_data['question'])
                 random.shuffle(question_data['options'])
                 generated_questions.append(question_data)
                 print(f"{len(generated_questions)}/{n_questions} questions generated.")
+
+                attempts = 0
+                
+                # Save the questions every 20 questions
+                if len(generated_questions) % 20 == 0:
+                    with open(questions_file_path, "w", encoding="utf-8") as json_file:
+                        json.dump(generated_questions, json_file, indent=4, ensure_ascii=False)
+                    print(f"Saved {len(generated_questions)} questions to {questions_file_path}.")
             else:
                 attempts += 1
         except Exception as e:
@@ -63,6 +75,10 @@ def generate_questions(base_prompt, texts, n_questions, max_words, provider,mode
             if attempts == max_attempts:
                 print(f"{len(generated_questions)} questions generated. Process interrupted due to too many errors.")
                 break
+    
+
+    with open(questions_file_path, "w", encoding="utf-8") as json_file:
+        json.dump(generated_questions, json_file, indent=4, ensure_ascii=False)
     
     return generated_questions
 
@@ -87,39 +103,27 @@ def main():
     prompt_file_path = args.prompt_path
 
     ensure_dir(questions_dir)
-
-    # Leggi il prompt di base
+    
+    # Read the base prompt
     with open(prompt_file_path, encoding="utf-8") as f:
         base_prompt = f.read()
     
-    # Carica i testi
+    # Load the texts
     texts = load_texts(texts_dir)
     
-    # Controlla se il file esiste già e se contiene domande, altrimenti crea nuove domande
-    if questions_file_path.exists() and args.skip_existing:
+    # Load existing questions if the file exists
+    existing_questions = []
+    if questions_file_path.exists():
         with open(questions_file_path, "r", encoding="utf-8") as json_file:
             existing_questions = json.load(json_file)
-        
-        # Se il numero di domande è inferiore a quello richiesto, generiamo le mancanti
-        if len(existing_questions) < args.n_questions:
-            print(f"File already exists, generating additional questions.")
-            remaining_questions = args.n_questions - len(existing_questions)
-            new_questions = generate_questions(base_prompt, texts, remaining_questions, args.max_words_per_q, args.provider, args.model_name)
-            existing_questions.extend(new_questions)
-            
-            # Scrivi le domande aggiornate nel file
-            with open(questions_file_path, "w", encoding="utf-8") as json_file:
-                json.dump(existing_questions, json_file, indent=4, ensure_ascii=False)
-            print(f"Questions updated and saved to {questions_file_path}")
-        else:
-            print(f"File already contains {len(existing_questions)} questions, no additional questions needed.")
     
+    # If the file already contains the required number of questions, skip generation
+    if len(existing_questions) >= args.n_questions:
+        print(f"File already contains {len(existing_questions)} questions. Skipping generation.")
     else:
-        # Se il file non esiste o skip_existing è disabilitato, generiamo tutte le domande
+        # If there are fewer questions than required, generate the missing ones
         print(f"Generating {args.n_questions} questions.")
-        questions = generate_questions(base_prompt, texts, args.n_questions, args.max_words_per_q, args.provider, args.model_name)
-        with open(questions_file_path, "w", encoding="utf-8") as json_file:
-            json.dump(questions, json_file, indent=4, ensure_ascii=False)
+        generate_questions(base_prompt, texts, args.n_questions, args.max_words_per_q, args.provider, args.model_name, questions_file_path, existing_questions)
         print(f"Questions generated and saved to {questions_file_path}")
 
 if __name__ == "__main__":
