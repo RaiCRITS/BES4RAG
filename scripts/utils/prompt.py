@@ -3,47 +3,7 @@ import json
 
 
 def prompt_1_text(text):
-    return f"""Create a multiple-choice question  based solely on the content of the following text:
-----------------------------
-{text}
-----------------------------
-The question must be written in the same language of the text given and will be used for a test in which the article is not provided, so it must be generic and must not contain references to the article itself (e.g., phrases like "in the given article..." or "based on the text" nor "mentioned in the text" should not appear).
-
-Moreover, if the text mentions a specific event, the question should include as many details as possible. For example, if it mentions a war, the question must clearly specify which war is being referred to. Similarly, any temporal references about the event should be provided—e.g., if the article talks about "today's event," the question must specify "the event on day X," where X is the date of the event, if it can be inferred from the article.
-
-Next, create four possible answer options in the same language of the article, one of which must be correct, while the others should be plausible but incorrect, ensuring the correct answer is unambiguous.
-
-The correct answer must be derivable solely from the content of the article.
-
-For each option, provide an explanation of why, based on the article, the option is either correct or incorrect.
-
-Present the response in the following format:
-{{
-    "question": <multiple-choice question>,
-    "options":[
-        {{
-            "text":"<option1>",
-            "is_correct": "<True/False>",
-            "explanation": "<explanation of why option 1 is True or False>"
-        }},
-        {{
-            "text":"<option2>",
-            "is_correct": "<True/False>",
-            "explanation": "<explanation of why option 2 is True or False>"
-        }},
-        {{
-            "text":"<option3>",
-            "is_correct": "<True/False>",
-            "explanation": "<explanation of why option 3 is True or False>"
-        }},
-        {{
-            "text":"<option4>",
-            "is_correct": "<True/False>",
-            "explanation": "<explanation of why option 4 is True or False>"
-        }}
-    ]
-}}
-Provide only the question and options formatted as specified above and written in the same language of the text without any additional text."""
+    return open("base_prompt.txt").read()
 
 def from_id_to_article(id, path):
     with open(os.path.join(path, "texts", id+".txt"), "r") as file:
@@ -234,6 +194,7 @@ Do not repeat any part of the text contained in the given document but create a 
 Return only the brief summary, written in the same language as the original document, without adding further text.
 Summary:
 """
+
 
 
 
