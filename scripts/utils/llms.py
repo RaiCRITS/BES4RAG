@@ -172,11 +172,9 @@ def get_gemini_question(prompt, model_name, paths=[], initial_wait=1):
         try:
             response = model.generate_content(parts)
             return response.text
-        except ResourceExhausted:
+        except Exception as e:
             time.sleep(wait_time)
             wait_time *= 2
-        except Exception as e:
-            raise e
 
 def get_groq_question(prompt, model_name, max_retries=5):
     client = Groq(api_key=api_keys["groq"]["api_key"])
@@ -186,11 +184,10 @@ def get_groq_question(prompt, model_name, max_retries=5):
             response = client.chat.completions.create(
                 messages=[
                     {"role": "system", "content": "You are an AI assistant that creates multiple-choice questions based on a given text."},
-                    {"role": "user", "content": prompt},
+                    {"role": "user", "content": prompt}
                 ],
                 model=model_name,
                 temperature=0
-
             )
             return response.choices[0].message.content
         except APIError as e:
@@ -230,8 +227,17 @@ def generate_question(provider, model_name, prompt):
         res = get_groq_question(prompt, model_name)
     elif provider == "gemini":
         res = get_gemini_question(prompt, model_name)
-    resp = json.loads(res)
+    res = "{"+"{".join(res.split("{")[1:])
+    res = "}".join(res.split("}")[:-1])+"}"
+    res = res.replace('"is_correct": true','"is_correct": "True"').replace('"is_correct": false','"is_correct": "False"')
+    try:
+      resp = json.loads(res)
+    except:
+      resp = eval(res)
+      for option in resp["options"]:
+        option["is_correct"] = str(option["is_correct"])
     return resp
+
 
 
 
