@@ -33,6 +33,7 @@ import re
 
 from nltk.corpus import stopwords
 
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 def parse_tfidf_string(s):
     mapping = {
@@ -184,10 +185,10 @@ def compute_embeddings(transcripts,embedding):
 
     name = "-".join([embedding['type'],embedding["model_name"].replace("/","|")])
 
-    #SENTENCE TRANSFORMERS
+
     if embedding['type'] == "sentencetransformers":
         # Caricare il modello su CPU
-        model = SentenceTransformer(embedding['model_name'], device="cpu")
+        model = SentenceTransformer(embedding['model_name'], device=device)
         
         ids = []
         embeddings = []
@@ -196,7 +197,7 @@ def compute_embeddings(transcripts,embedding):
             if tr['text'] != "":
                 try:
                     ids.append(tr['id'])
-                    embeddings.append(model.encode(tr['text'], device="cpu"))  # Forza il calcolo su CPU
+                    embeddings.append(model.encode(tr['text'], device=device))  # Forza il calcolo su CPU
                 except Exception as e:
                     print(e)
                     print(tr['id'])
@@ -218,7 +219,6 @@ def compute_embeddings(transcripts,embedding):
         return {"embeddings":embeddings,"ids":ids}
         """
 
-    #OPENAI
     elif embedding['type'] == "openai" or embedding['type'] == "openai512":
 
         if "azure_endpoint" in api_keys["openai"]:
@@ -246,36 +246,31 @@ def compute_embeddings(transcripts,embedding):
                     print(tr['id'])
         return {"embeddings":embeddings,"ids":ids}
 
-    #COLBERT
 
     elif embedding['type'] == "colbert":
         checkpoint = embedding['model_name']
         config = ColBERTConfig(doc_maxlen=500, nbits=2)
-        
-        # Caricare il checkpoint su CPU
         ckpt = Checkpoint(checkpoint, colbert_config=config)
-        if hasattr(ckpt, "to"):
-            ckpt.to("cpu")  # Forza il modello su CPU
-    
+        
         ids = []
         processed_passages = []
-    
+
         for tr in tqdm(transcripts):
             if tr['text'] != "":
                 ids.append(tr['id'])
                 processed_passages.append(tr['text'])
-    
-        # Assicurarsi che l'output di docFromText sia su CPU
-        with torch.no_grad():  # Evita operazioni di calcolo su GPU
-            D = ckpt.docFromText(processed_passages, bsize=32)[0].to("cpu")
-        
-        # Creare la maschera su CPU
-        D_mask = torch.ones(D.shape[:2], dtype=torch.long, device="cpu")
-    
-        # Convertire in NumPy su CPU
+
+        if device == "cpu":
+            if hasattr(ckpt, "to"):
+                ckpt.to(device)
+            with torch.no_grad():
+                D = ckpt.docFromText(processed_passages, bsize=32)[0].to(device)
+            D_mask = torch.ones(D.shape[:2], dtype=torch.long, device=device)
+        else:
+            D = ckpt.docFromText(processed_passages, bsize=32)[0]
+            D_mask = torch.ones(D.shape[:2], dtype=torch.long)
         D = D.detach().cpu().numpy()
         D_mask = D_mask.detach().cpu().numpy()
-    
         return {"D": D, "D_mask": D_mask, "ids": ids}
 
     elif embedding['type'] == "TFIDF":
@@ -325,5 +320,6 @@ def compute_embeddings(transcripts,embedding):
 #        D_mask = np.concatenate(D_mask, axis=0)
         return {"D":D,"D_mask":D_mask,"ids":ids}
     """
+
 
 
