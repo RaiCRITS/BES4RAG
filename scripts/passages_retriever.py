@@ -19,7 +19,9 @@ def main():
     parser.add_argument("--name_file_questions", type=str, default="generated_questions.json", help="Name of JSON file containing questions")
     parser.add_argument("--embeddings_path", type=str, default="embeddings", help="Folder for computed embeddings")
     parser.add_argument("--retrieval_path", type=str, default="retrieval", help="Folder for retrieval results")
-    
+    parser.add_argument("--skip_existing", type=bool, default=True, nargs="?", const=True, help="Skip processing if passages.json already exists")
+
+
     args = parser.parse_args()
     dataset_path = Path(args.dataset_path)
     questions_dir = dataset_path / args.questions_path
@@ -41,12 +43,20 @@ def main():
     for model_name in embeddings_dict:
         embeddings_model = embeddings_dict[model_name]
         safe_name = model_name.replace("/", "|")
+
+        retrieval_file_path = retrieval_questions_dir / safe_name
+
+
+        if retrieval_file_path.exists() and args.skip_existing:
+            print(f"Skipping {safe_name}, already computed.")
+            continue
+        
         retrieval_dict = {}
         
         for question in tqdm([q["question"] for q in questions]):
             retrieval_dict[question] = retrieval.retrieve_passages(question, embeddings_model)
         
-        with open(retrieval_questions_dir / safe_name, "wb") as f:
+        with open(retrieval_file_path, "wb") as f:
             pickle.dump(retrieval_dict, f)
 
 if __name__ == "__main__":
