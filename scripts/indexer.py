@@ -1,81 +1,99 @@
 import os
 import json
-import pandas as pd
-from tqdm import tqdm
-from pathlib import Path
 import argparse
-import pickle
-
-# Import specific utilities from custom module
-from utils import embeddings
+from pathlib import Path
+from shutil import copy2
+from PyPDF2 import PdfReader
 
 def ensure_dir(path):
     """Create a directory if it does not exist."""
     os.makedirs(path, exist_ok=True)
 
-def read_embeddings_models(file_path):
-    """Read embeddings_models.csv or .xlsx and return a DataFrame."""
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"File not found: '{file_path}'")
-    
-    ext = os.path.splitext(file_path)[-1].lower()
-    if ext == ".csv":
+def process_json(filepath, texts_dir, mapping, skip_existing):
+    """Process a JSON file and convert its content into text files."""
+    with open(filepath, "r", encoding="utf-8") as f:
         try:
-            df = pd.read_csv(file_path)
-            df.columns = ["type", "model_name"]
-        except:
-            df = pd.read_csv(file_path,sep=";")
-            df.columns = ["type", "model_name"]
-    elif ext in [".xls", ".xlsx"]:
-        df = pd.read_excel(file_path)
-        df.columns = ["type", "model_name"]
-    else:
-        raise ValueError("Unsupported format! Use .csv or .xlsx")
-    return df.to_dict(orient="records")
+            data = json.load(f)
+            filename = os.path.basename(filepath).replace(".json", "")
+            if isinstance(data, list):
+                for i, el in enumerate(data):
+                    for j, (key, value) in enumerate(el.items()):
+                        text_filename = f"{filename}___{i}_{j}.txt"
+                        text_path = os.path.join(texts_dir, text_filename)
+                        if not skip_existing or not os.path.exists(text_path):  # Check if file exists
+                            text_content = f"{key}: {value}"
+                            with open(text_path, "w", encoding="utf-8") as text_file:
+                                text_file.write(text_content)
+                        mapping["texts_to_files"][text_filename] = str(filepath)
+            else:
+                for i, (key, value) in enumerate(data.items()):
+                    text_filename = f"{filename}___{i}.txt"
+                    text_path = os.path.join(texts_dir, text_filename)
+                    if not skip_existing or not os.path.exists(text_path):  # Check if file exists
+                        text_content = f"{key}: {value}"
+                        with open(text_path, "w", encoding="utf-8") as text_file:
+                            text_file.write(text_content)
+                    mapping["texts_to_files"][text_filename] = str(filepath)
+        except json.JSONDecodeError:
+            print(f"Error parsing JSON: {filepath}")
+
+def process_txt(filepath, texts_dir, mapping, skip_existing):
+    """Copy a text file to the target directory."""
+    dest_path = os.path.join(texts_dir, os.path.basename(filepath))
+    text_filename = os.path.basename(filepath)
+    if not skip_existing or not os.path.exists(dest_path):  # Check if file exists
+        copy2(filepath, dest_path)
+    mapping["texts_to_files"][text_filename] = str(filepath)
+
+def process_pdf(filepath, texts_dir, mapping, skip_existing):
+    """Convert each page of a PDF into a separate text file."""
+    pdf_reader = PdfReader(filepath)
+    filename = os.path.basename(filepath).replace(".pdf", "")
+    for i, page in enumerate(pdf_reader.pages):
+        text_filename = f"{filename}_page_{i}.txt"
+        text_path = os.path.join(texts_dir, text_filename)
+        if not skip_existing or not os.path.exists(text_path):  # Check if file exists
+            with open(text_path, "w", encoding="utf-8") as text_file:
+                text_file.write(page.extract_text() or "")
+        mapping["texts_to_files"][text_filename] = str(filepath)
 
 def main():
     """Main function to process files in the dataset directory."""
     parser = argparse.ArgumentParser()
     parser.add_argument("dataset_path", type=str, help="Path to the dataset")
-    parser.add_argument("--passages_path", type=str, default="passages", help="Folder for computed passages")
-    parser.add_argument("--embeddings_models_filename", type=str, default="embeddings_models.csv", help="File with embeddings models list")
-    parser.add_argument("--embeddings_path", type=str, default="embeddings", help="Folder for computed embeddings")
-
+    parser.add_argument("--files_path", type=str, default="files", help="Name of the folder containing the files")
+    parser.add_argument("--texts_path", type=str, default="texts", help="Name of the folder where converted files will be stored")
+    parser.add_argument("--skip_existing", type=bool, default=True, nargs="?", const=True, help="Skip processing if passages.json already exists")
     args = parser.parse_args()
     
     dataset_path = Path(args.dataset_path)
-    passages_dir = dataset_path / args.passages_path
-    embeddings_models_file = dataset_path / args.embeddings_models_filename
-    embeddings_dir = dataset_path / args.embeddings_path
-
-    ensure_dir(embeddings_dir)
-
-    embeddings_models = read_embeddings_models(embeddings_models_file)
+    files_dir = dataset_path / args.files_path
+    texts_dir = dataset_path / args.texts_path
+    mapping_dir = dataset_path / "mapping"
+    mapping_file = os.path.join(mapping_dir,"file_mapping.json")
     
-    TOKENIZER_CACHE = {}
-    for el in embeddings_models:
-        embeddings.get_tokenizer(el, TOKENIZER_CACHE)
-
-    with open(passages_dir / "passages.json", "r", encoding="utf-8") as f:
-        passages = json.load(f)
-        
-    for embedding in embeddings_models:
-        name = "-".join([embedding['type'], embedding["model_name"].replace("/", "|")])
-        passages_model = passages.get(name, {})
-        transcripts = []
-
-        text_file_keys = list(passages_model.keys())
-
-        
-        for text_file in text_file_keys:
-            for i,text_pass in enumerate(passages_model[text_file]):
-                transcripts.append({"id": f"{text_file}#{i}", "text": text_pass})
-
-        emb_file = embeddings.compute_embeddings(transcripts, embedding)
-
-        with open(embeddings_dir / name, "wb") as f:
-            pickle.dump(emb_file, f)
+    ensure_dir(texts_dir)
+    ensure_dir(mapping_dir)
+    
+    if os.path.exists(mapping_file) and args.skip_existing:
+        print(f"Mapping already exists at {mapping_file}. No action taken.")
+        return
+    
+    mapping = {"texts_to_files": {}}
+    for filepath in files_dir.glob("*"):
+        if filepath.suffix == ".json":
+            process_json(filepath, texts_dir, mapping, args.skip_existing)
+        elif filepath.suffix == ".txt":
+            process_txt(filepath, texts_dir, mapping, args.skip_existing)
+        elif filepath.suffix == ".pdf":
+            process_pdf(filepath, texts_dir, mapping, args.skip_existing)
+    
+    with open(mapping_file, "w", encoding="utf-8") as f:
+        json.dump(mapping, f, indent=4)
+    
+    print(f"Processing completed. Mapping saved in {mapping_file}")
 
 if __name__ == "__main__":
     main()
+
 
