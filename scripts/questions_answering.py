@@ -21,6 +21,8 @@ def main():
     parser.add_argument("--llm_provider", type=str, default="groq", help="LLM provider (e.g openai, gemini, groq)")
     parser.add_argument("--model_name", type=str, default="llama3-70b-8192", help="The name of the specific model")
     parser.add_argument("--answers_path", type=str, default="answers", help="Folder for answers")
+    parser.add_argument("--skip_existing", type=bool, default=True, nargs="?", const=True, help="Skip processing if passages.json already exists")
+
 
     args = parser.parse_args()
 
@@ -63,21 +65,28 @@ def main():
 
     for emb in retieved_dict:
         dict_answers = {}
+
+        file_path = os.path.join(answers_questions_dir, emb + ".json")
+
+        if os.path.exists(file_path) and args.skip_existing:
+            dict_answers = json.load(open(file_path))
+            
         retrieved = retieved_dict[emb]
         for q in tqdm(questions):
-            dict_answers[q['question']] = {}
-            dict_answers[q['question']]['correct_answer'] = next((index for index, item in enumerate(q['options']) if item['is_correct'] == 'True'), None)
-            resps = []
-            for k in ks:    #k=0 is no rag
-                if k == 0:
-                    prompt_ = prompt.prompt_question_passages(q, retrieved, k, args.dataset_path, emb, rag = False)
-                else:
-                    prompt_ = prompt.prompt_question_passages(q, retrieved, k, args.dataset_path, emb, rag = True)
-                resp = llms.answer_question(provider,model_name,prompt_)
-                resps.append({"k":k, "answer":resp})
-            dict_answers[q['question']]['answer_LLM'] = resps
-        with open(os.path.join(answers_questions_dir,emb+".json"), 'w') as json_file:
-            json.dump(dict_answers, json_file, indent=4, ensure_ascii=False)
+            if q not in dict_answers:
+                dict_answers[q['question']] = {}
+                dict_answers[q['question']]['correct_answer'] = next((index for index, item in enumerate(q['options']) if item['is_correct'] == 'True'), None)
+                resps = []
+                for k in ks:    #k=0 is no rag
+                    if k == 0:
+                        prompt_ = prompt.prompt_question_passages(q, retrieved, k, args.dataset_path, emb, rag = False)
+                    else:
+                        prompt_ = prompt.prompt_question_passages(q, retrieved, k, args.dataset_path, emb, rag = True)
+                    resp = llms.answer_question(provider,model_name,prompt_)
+                    resps.append({"k":k, "answer":resp})
+                dict_answers[q['question']]['answer_LLM'] = resps
+                with open(file_path, 'w') as json_file:
+                    json.dump(dict_answers, json_file, indent=4, ensure_ascii=False)
 
 if __name__ == "__main__":
     main()
