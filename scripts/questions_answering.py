@@ -73,7 +73,7 @@ def main():
             
         retrieved = retieved_dict[emb]
         for q in tqdm(questions):
-            if q not in dict_answers:
+            if q['question'] not in dict_answers:
                 dict_answers[q['question']] = {}
                 dict_answers[q['question']]['correct_answer'] = next((index for index, item in enumerate(q['options']) if item['is_correct'] == 'True'), None)
                 resps = []
