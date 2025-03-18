@@ -63,7 +63,7 @@ def main():
     parser.add_argument("dataset_path", type=str, help="Path to the dataset")
     parser.add_argument("--files_path", type=str, default="files", help="Name of the folder containing the files")
     parser.add_argument("--texts_path", type=str, default="texts", help="Name of the folder where converted files will be stored")
-    parser.add_argument("--skip_existing", action="store_true", help="Skip files that already exist")
+    parser.add_argument("--skip_existing", type=bool, default=True, nargs="?", const=True, help="Skip processing if passages.json already exists")
     args = parser.parse_args()
     
     dataset_path = Path(args.dataset_path)
@@ -75,7 +75,7 @@ def main():
     ensure_dir(texts_dir)
     ensure_dir(mapping_dir)
     
-    if os.path.exists(mapping_file):
+    if os.path.exists(mapping_file) and args.skip_existing:
         print(f"Mapping already exists at {mapping_file}. No action taken.")
         return
     
