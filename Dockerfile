@@ -18,7 +18,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 
 # Clona il repository BES4RAG da GitHub
-RUN git clone https://github.com/tuo-utente/BES4RAG.git
+RUN git clone https://github.com/RaiCRITS/BES4RAG.git
 
 # Spostati nella cartella del repository
 WORKDIR /app/BES4RAG
