@@ -1,5 +1,6 @@
 import time
 import subprocess
+import sys
 
 def execute_command_with_timing(command):
     start_time = time.time()  # Inizio del timer
@@ -13,9 +14,15 @@ def execute_command_with_timing(command):
     hours, remainder = divmod(int(elapsed_time), 3600)
     minutes, seconds = divmod(remainder, 60)
 
-    print(f"Exectuion time: {hours:02}:{minutes:02}:{seconds:02}")
+    print(f"Execution time: {hours:02}:{minutes:02}:{seconds:02}")
     #print(f"Output:\n{result.stdout}")
-    #print(f"Errori:\n{result.stderr}")
+    #print(f"Errors:\n{result.stderr}")
+
+if len(sys.argv) < 2:
+    print("Usage: python script.py <dataset_path>")
+    sys.exit(1)
+
+dataset_path = sys.argv[1]
 
 print("Files to txt conversion")
 execute_command_with_timing(f"python3 scripts/file_to_text_converter.py {dataset_path}")
@@ -29,7 +36,7 @@ print("\n\n\n")
 print("Indexes creation")
 execute_command_with_timing(f"python3 scripts/indexer.py {dataset_path}")
 print("\n\n\n")
-print("Retrieving passages for anwering questions")
+print("Retrieving passages for answering questions")
 execute_command_with_timing(f"python3 scripts/passages_retriever.py {dataset_path}")
 print("\n\n\n")
 print("Questions answering")
