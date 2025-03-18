@@ -4,7 +4,7 @@ pandas==2.2.2
 tqdm==4.67.1
 numpy==1.26.4
 groq==0.18.0
-torch==2.6.0+cu124
+torch
 tiktoken==0.7.0
 scikit-learn==1.6.1
 nltk==3.9.1
