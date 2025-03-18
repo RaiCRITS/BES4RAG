@@ -12,3 +12,4 @@ sentence-transformers==3.4.1
 transformers==4.48.3
 openai==1.66.3
 colbert-ai==0.2.20
+google-generativeai
