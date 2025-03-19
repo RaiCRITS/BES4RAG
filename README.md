@@ -7,17 +7,27 @@ This framework selects the optimal embedding model to be paired with a large lan
 
 A key component of this approach is an automated multiple-choice question generation module, supported by a questioning LLM. Once the questions are generated, documents are segmented into chunks, embeddings are precomputed, and the most relevant segments are retrieved to assist the answering LLM in answering the questions. The system evaluates both the accuracy of the responses and the quality of the retrieved document segments, enabling the selection of the best embedding model for a given dataset.
 
-The system has been tested with datasets containing up to approximately 50,000 documents, both on CPU and GPU environments.
+The system has been successfully tested with datasets containing up to **50,000 documents**, demonstrating scalability across both **CPU** and **GPU** environments.
+
+## Time Considerations  
+
+The time required to compute embeddings depends on the available hardware:  
+- **GPU:** Processing can take approximately **1 hour** for medium-sized datasets and extend to several hours for very large datasets.  
+- **CPU:** The embedding computation time may range from **1 to 2 days**, depending on the number of documents and the complexity of the selected embedding model.  
+
+Since the framework currently integrates LLM providers such as **Groq, OpenAI, and Gemini**, response times for question answering can also vary based on several factors:  
+- The number of generated questions.  
+- API rate limits, especially for free-tier users, which may impose daily restrictions on query processing speed.  
+
+## How to run the pipeline? 
 
 
 There are two ways to test the framework:
 
-1. **Google Colab**: You can easily run the framework in Google Colab using the following link and following the code step by step (all the instructions to set up your datasets and experiments are written inside):  
+1. **Google Colab**: Run the framework directly in Google Colab by following this link and executing the code step by step. The notebook includes detailed instructions on setting up your datasets and experiments. Using a GPU is highly recommended.  
    [Run in Google Colab](https://colab.research.google.com/drive/1VGMA1cHQ2ClTuXvKgVDcqhYA14YRgEX2?usp=sharing)
    
-2. **Local Machine**: You can also test the framework on your local machine by following the setup instructions provided in the repository.
-
-
+2. **Local Machine**: Alternatively, you can run the framework on your local machine by following the setup instructions provided later in this README.
 
 
 ## Installation
