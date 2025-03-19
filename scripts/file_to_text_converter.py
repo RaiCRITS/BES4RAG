@@ -75,7 +75,7 @@ def main():
     parser.add_argument("--texts_path", type=str, default="texts", help="Name of the folder where converted files will be stored")
     parser.add_argument("--descriptions_path", type=str, default="descriptions", help="Name of the folder where descriptions will be stored")
     parser.add_argument("--skip_existing", type=bool, default=True, nargs="?", const=True, help="Skip processing if passages.json already exists")
-    parser.add_argument("--create_descriptions", type=bool, default=False, nargs="?", const=True, help="Create descriptions automatically for each file")
+    parser.add_argument("--create_descriptions", type=bool, default=True, nargs="?", const=True, help="Create descriptions automatically for each file")
     args = parser.parse_args()
     
     dataset_path = Path(args.dataset_path)
