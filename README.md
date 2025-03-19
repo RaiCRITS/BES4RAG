@@ -32,7 +32,8 @@ There are two ways to test the framework:
 
 ## Installation
 
-Clone this repository then choose one of the following options.
+
+After cloning the repository, you can either use the Dockerfile to create the environment or install it manually. In the case of manual installation, there may be fewer guarantees regarding environment consistency and dependencies.
 
 ### Option 1 - Use Docker
 You can use the `Dockerfile` to create the environment for running the framework. This method ensures a consistent environment and makes it easier to set up on any machine. To build and run the Docker container, use the following commands:
@@ -46,11 +47,12 @@ docker run -it --rm BES4RAG
 ```
 
 ### Option 2 - Manual installation
+
+Run the following code:
 ```bash
 python setup.py install
 ```
 
-After cloning the repository, you can either use the Dockerfile to create the environment or install it manually. In the case of manual installation, there may be fewer guarantees regarding environment consistency and dependencies.
 
 
 ## API Key Configuration  
