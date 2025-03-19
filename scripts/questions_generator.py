@@ -91,7 +91,7 @@ def main():
     parser.add_argument("--model_name", type=str, default="gpt4o_LowFilter", help="The specific model name")
     parser.add_argument("--prompt_path", type=str, default="scripts/utils/base_prompt.txt", help="Base prompt file")
     parser.add_argument("--texts_path", type=str, default="texts", help="Folder for text files")
-    parser.add_argument("--n_questions", type=int, default=500, help="Number of questions to generate")
+    parser.add_argument("--n_questions", type=int, default=100, help="Number of questions to generate")
     parser.add_argument("--max_words_per_q", type=int, default=None, help="Max words per question context")
     parser.add_argument("--skip_existing", type=bool, default=True, nargs="?", const=True, help="Skip processing if passages.json already exists")
     args = parser.parse_args()
