@@ -9,6 +9,16 @@ def ensure_dir(path):
     """Create a directory if it does not exist."""
     os.makedirs(path, exist_ok=True)
 
+def create_description_file(filepath, descriptions_dir):
+    """Create a description file for the original PDF, JSON, or TXT."""
+    filename = os.path.basename(filepath).replace(filepath.suffix, ".txt")
+    description_path = os.path.join(descriptions_dir, filename)
+    
+    if not os.path.exists(description_path):  # Check if description already exists
+        with open(description_path, "w", encoding="utf-8") as desc_file:
+            desc_file.write(f"Description for {filename} based on the original content.\n")
+        print(f"Created description file: {description_path}")
+
 def process_json(filepath, texts_dir, mapping, skip_existing):
     """Process a JSON file and convert its content into text files."""
     with open(filepath, "r", encoding="utf-8") as f:
@@ -63,16 +73,25 @@ def main():
     parser.add_argument("dataset_path", type=str, help="Path to the dataset")
     parser.add_argument("--files_path", type=str, default="files", help="Name of the folder containing the files")
     parser.add_argument("--texts_path", type=str, default="texts", help="Name of the folder where converted files will be stored")
+    parser.add_argument("--descriptions_path", type=str, default="descriptions", help="Name of the folder where descriptions will be stored")
     parser.add_argument("--skip_existing", type=bool, default=True, nargs="?", const=True, help="Skip processing if passages.json already exists")
+    parser.add_argument("--create_descriptions", type=bool, default=False, nargs="?", const=True, help="Create descriptions automatically for each file")
     args = parser.parse_args()
     
     dataset_path = Path(args.dataset_path)
     files_dir = dataset_path / args.files_path
     texts_dir = dataset_path / args.texts_path
+    descriptions_dir = dataset_path / args.descriptions_path
     mapping_dir = dataset_path / "mapping"
     mapping_file = os.path.join(mapping_dir,"file_mapping.json")
     
+    # Check if the descriptions directory exists, and if so, disable automatic description creation
+    if descriptions_dir.exists():
+        print(f"Descriptions directory {descriptions_dir} already exists. Automatic description creation will be disabled.")
+        args.create_descriptions = False
+    
     ensure_dir(texts_dir)
+    ensure_dir(descriptions_dir)
     ensure_dir(mapping_dir)
     
     if os.path.exists(mapping_file) and args.skip_existing:
@@ -87,6 +106,10 @@ def main():
             process_txt(filepath, texts_dir, mapping, args.skip_existing)
         elif filepath.suffix == ".pdf":
             process_pdf(filepath, texts_dir, mapping, args.skip_existing)
+        
+        # If the 'create_descriptions' flag is set, create description files
+        if args.create_descriptions:
+            create_description_file(filepath, descriptions_dir)
     
     with open(mapping_file, "w", encoding="utf-8") as f:
         json.dump(mapping, f, indent=4)
@@ -95,4 +118,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
