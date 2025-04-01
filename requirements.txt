@@ -1,4 +1,4 @@
-PyPDF2==3.0.1
+PyPDF2
 matplotlib==3.10.0
 pandas==2.2.2
 tqdm==4.67.1
