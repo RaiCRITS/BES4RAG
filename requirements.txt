@@ -7,7 +7,7 @@ groq==0.18.0
 torch
 tiktoken==0.7.0
 scikit-learn==1.6.1
-nltk==3.9.1
+nltk
 sentence-transformers==3.4.1
 transformers==4.48.3
 openai==1.66.3
